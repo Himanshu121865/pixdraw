@@ -1,5 +1,5 @@
 // ── config.rs ──────────────────────────────────────────────────────
-// Configuration loader — reads `~/.config/opendraw/config.toml` (or
+// Configuration loader — reads `~/.config/pixdraw/config.toml` (or
 // `./config.toml`) and provides typed access to theme colours, palette
 // colours, and keybind overrides.
 //
@@ -15,7 +15,7 @@ use serde::Deserialize;
 // ── Public API ───────────────────────────────────────────────────
 pub(crate) fn load() -> Config {
     let paths = [
-        dirs_config_dir().map(|d| d.join("opendraw").join("config.toml")),
+        dirs_config_dir().map(|d| d.join("pixdraw").join("config.toml")),
         Some(PathBuf::from("config.toml")),
     ];
 
@@ -29,7 +29,7 @@ pub(crate) fn load() -> Config {
 
     // No config found — generate a default one so the user can discover
     // all available options by opening the file.
-    if let Some(config_dir) = dirs_config_dir().map(|d| d.join("opendraw")) {
+    if let Some(config_dir) = dirs_config_dir().map(|d| d.join("pixdraw")) {
         std::fs::create_dir_all(&config_dir).ok();
         let path = config_dir.join("config.toml");
         if !path.exists() {

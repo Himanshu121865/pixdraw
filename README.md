@@ -1,4 +1,4 @@
-# termdraw
+# pixdraw
 
 Terminal-based pixel art editor
 
@@ -19,20 +19,20 @@ Terminal-based pixel art editor
 ## Installation
 
 ```sh
-cargo install termdraw
+cargo install pixdraw
 ```
 
 ## Usage
 
-Run `termdraw` to launch the editor.
+Run `pixdraw` to launch the editor.
 
 ### convert image to txt/png file
 
 ```sh
-cargo run --bin img2termdraw -- photo.jpg --width 80
+cargo run --bin img2pixdraw -- photo.jpg --width 80
 ```
 
-Converts any image (jpg, png, gif, bmp) into termdraw's `.txt` format, resizing to fit the given width while preserving aspect ratio.
+Converts any image (jpg, png, gif, bmp) into pixdraw's `.txt` format, resizing to fit the given width while preserving aspect ratio.
 
 ## Keybinds
 
@@ -45,7 +45,7 @@ See the in-app help (`?`) for the full reference.
 
 ## Configuration
 
-Config file at `~/.config/termdraw/config.toml`. A fully-commented default is generated on first run.
+Config file at `~/.config/pixdraw/config.toml`. A fully-commented default is generated on first run.
 
 ## License
 

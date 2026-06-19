@@ -1,21 +1,9 @@
 // ── app/session.rs ──────────────────────────────────────────────────
 // Automatic session persistence. Saves the full app state (all tabs,
 // canvas data, palette index, brush size, colour overrides, etc.) to
-// a custom-format DAT file in `~/.local/share/opendraw/session.dat`.
-//
-// On restart the session is restored, so no work is lost if the
-// program is closed accidentally. The "Previous session found" dialog
-// lets the user restore, save-then-new, or discard.
-//
-// Each pixel is stored as `point:x|y|R|G|B`, plus metadata lines like
-// `brush_size:3`, `palette_idx:5`, and `tab_name:...`. Tab boundaries
-// are implicit (a `tab_name:` line starts a new tab).
-//
-// Why a custom format instead of JSON/serde?
-//   A custom line-based format avoids pulling in serde dependencies.
-//   It's also trivially human-readable for debugging.
-//
-// Why ~/.local/share/opendraw/ instead of the working directory?
+// a custom-format DAT file in `~/.local/share/pixdraw/session.dat`.
+
+// Why ~/.local/share/pixdraw/ instead of the working directory?
 //   The session should survive terminal closes, working directory
 //   changes, and system restarts. XDG data directories are the
 //   standard cross-platform convention for this.
@@ -31,7 +19,7 @@ use crate::app::DrawingApp;
 /// Return the path to the session file in the user's data directory.
 fn session_path() -> std::path::PathBuf {
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-    let dir = std::path::PathBuf::from(&home).join(".local/share/opendraw");
+    let dir = std::path::PathBuf::from(&home).join(".local/share/pixdraw");
     let _ = fs::create_dir_all(&dir);
     dir.join("session.dat")
 }

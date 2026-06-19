@@ -1,11 +1,11 @@
 [package]
-name = "termdraw"
+name = "pixdraw"
 version = "0.1.0"
 # edition 2024 requires Rust 1.85+. Switch to "2021" if using an older toolchain.
 edition = "2024"
 description = "Terminal-based pixel art editor"
 license = "MIT"
-repository = "https://github.com/Himanshu121865/termdraw"
+repository = "https://github.com/Himanshu121865/pixdraw"
 readme = "README.md"
 keywords = ["pixel-art", "editor", "terminal", "ratatui"]
 categories = ["command-line-utilities", "graphics"]

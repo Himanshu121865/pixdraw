@@ -240,7 +240,7 @@ impl DrawingApp {
     }
 
     // ── Quick export ──────────────────────────────────────────────
-    // Saves the canvas to opendraw_export.png so the user can open
+    // Saves the canvas to pixdraw_export.png so the user can open
     // it in an image viewer. Simpler than Ctrl+E (no file browser).
 
 }

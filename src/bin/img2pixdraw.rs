@@ -1,5 +1,5 @@
-// ── img2termdraw ─────────────────────────────────────────────────
-// CLI tool: convert any image file into an opendraw .txt pixel-
+// ── img2pixdraw ─────────────────────────────────────────────────
+// CLI tool: convert any image file into a pixdraw .txt pixel-
 // representation so it can be loaded into the editor.
 //
 // Why this exists:
@@ -39,8 +39,8 @@ fn apply_contrast(r: f32, g: f32, b: f32, factor: f32) -> (f32, f32, f32) {
 // flag. This is the standard approach for Rust CLI apps.
 #[derive(Parser, Debug)]
 #[command(
-    name = "img2termdraw",
-    about = "Convert any image to opendraw .txt format"
+    name = "img2pixdraw",
+    about = "Convert any image to pixdraw .txt format"
 )]
 struct Args {
     /// Source image (jpg, png, gif, bmp, …)

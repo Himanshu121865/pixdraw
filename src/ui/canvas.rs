@@ -1,5 +1,5 @@
 // ── ui/canvas.rs ─────────────────────────────────────────────────────
-// The canvas is the heart of opendraw. This module handles everything
+// The canvas is the heart of pixdraw. This module handles everything
 // that appears inside the bordered canvas area: pixels, grid dots, the
 // brush cursor preview, and text overlays.
 //
