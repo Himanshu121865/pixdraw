@@ -1,6 +1,6 @@
 [package]
 name = "pixdraw"
-version = "0.1.0"
+version = "0.1.1"
 # edition 2024 requires Rust 1.85+. Switch to "2021" if using an older toolchain.
 edition = "2024"
 description = "Terminal-based pixel art editor"
