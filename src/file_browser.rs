@@ -1,30 +1,6 @@
-// ── file_browser.rs ───────────────────────────────────────────────
-// A directory-listing file browser used for Save (Ctrl+S) and Open
-// (Ctrl+O) dialogs. It lists files in the current directory, supports
-// navigation with keyboard/mouse, and distinguishes Save vs Load modes.
-//
-// How it works:
-//   1. `open(mode)` sets `active = true`, starts at the CWD, and calls
-//      `refresh()` to scan entries.
-//   2. Entries are grouped: directories first (sorted), then files
-//      (sorted). In Load mode, only loadable files (.txt, .jpg, .png,
-//      .gif, .bmp) are shown. In Save mode, all files are shown.
-//   3. Hidden files (names starting with `.`) are excluded to reduce
-//      visual noise — the user probably doesn't need .gitignore when
-//      browsing for pixel art.
-//   4. The event loop in event.rs intercepts keyboard/mouse and
-//      delegates to the browser's navigation methods. The browser
-//      itself is stateless — it only tracks position and scrolling.
-//
-// Why a custom browser instead of a library?
-//   A custom file browser keeps the save/load UX consistent with the
-//   rest of the app (same colour theme, same input handling). A real
-//   terminal file dialog would pull in a heavy dependency and fight
-//   with our rendering architecture.
 
 use std::{fs, path::PathBuf};
 
-/// Whether the browser was opened for saving or loading.
 #[derive(Clone, Copy, PartialEq)]
 pub enum FileBrowserMode {
     Save,
@@ -32,36 +8,22 @@ pub enum FileBrowserMode {
     ExportPng,
 }
 
-/// A single entry in the directory listing.
 pub struct FileEntry {
     pub name: String,
     pub is_dir: bool,
 }
 
-/// The file browser's full state: open/closed flag, mode, entry list,
-/// selection cursor, scroll offset, current directory, and the
-/// filename text input (used in Save mode).
 pub struct FileBrowser {
-    /// Whether the file browser popup is currently shown.
-    pub active: bool,
-    /// Whether we are in Save mode or Load mode.
-    pub mode: FileBrowserMode,
-    /// The listed files and directories in the current directory.
-    pub entries: Vec<FileEntry>,
-    /// Index into `entries` of the currently highlighted item.
-    pub selected: usize,
-    /// The directory being browsed.
-    pub current_path: PathBuf,
-    /// Last directory that was browsed (persists across opens).
-    pub last_dir: PathBuf,
-    /// Scrolling offset into `entries` (for the viewport).
-    pub scroll_offset: usize,
-    /// Text typed into the filename input (Save/ExportPng mode).
-    pub filename_input: String,
-    /// Whether the filename input has focus (i toggles it).
-    pub filename_input_active: bool,
-    /// One-shot message (e.g. "Cannot read directory").
-    pub message: String,
+        pub active: bool,
+        pub mode: FileBrowserMode,
+        pub entries: Vec<FileEntry>,
+        pub selected: usize,
+        pub current_path: PathBuf,
+        pub last_dir: PathBuf,
+        pub scroll_offset: usize,
+        pub filename_input: String,
+        pub filename_input_active: bool,
+        pub message: String,
 }
 
 impl FileBrowser {
@@ -81,9 +43,7 @@ impl FileBrowser {
         }
     }
 
-    /// Open the browser in the given mode and refresh the file listing.
-    /// Starts in the last browsed directory rather than CWD.
-    pub fn open(&mut self, mode: FileBrowserMode) {
+            pub fn open(&mut self, mode: FileBrowserMode) {
         self.mode = mode;
         self.active = true;
         self.filename_input.clear();
@@ -93,9 +53,7 @@ impl FileBrowser {
         self.refresh();
     }
 
-    /// Re-read the current directory and rebuild the entry list.
-    /// Directories come first (sorted), then files (sorted).
-    pub fn refresh(&mut self) {
+            pub fn refresh(&mut self) {
         self.entries.clear();
         let Ok(rd) = fs::read_dir(&self.current_path) else {
             self.message = "Cannot read directory".to_string();
@@ -109,8 +67,7 @@ impl FileBrowser {
             let Ok(ft) = entry.file_type() else { continue };
             let name = entry.file_name().to_string_lossy().to_string();
 
-            // Skip hidden files (starting with `.`)
-            if name.starts_with('.') { continue; }
+                        if name.starts_with('.') { continue; }
 
             if ft.is_dir() {
                 dirs.push(FileEntry { name, is_dir: true });
@@ -124,17 +81,14 @@ impl FileBrowser {
                     files.push(FileEntry { name, is_dir: false });
                 }
             } else if self.mode == FileBrowserMode::Save {
-                // In Save mode show all files — the user may overwrite any file.
-                files.push(FileEntry { name, is_dir: false });
+                                files.push(FileEntry { name, is_dir: false });
             }
         }
 
-        // Alphabetical sort ensures predictable ordering.
-        dirs.sort_by(|a, b| a.name.cmp(&b.name));
+                dirs.sort_by(|a, b| a.name.cmp(&b.name));
         files.sort_by(|a, b| a.name.cmp(&b.name));
 
-        // ".." entry — only if there is a parent directory.
-        if self.current_path.parent().is_some() {
+                if self.current_path.parent().is_some() {
             self.entries.push(FileEntry {
                 name: "..".to_string(),
                 is_dir: true,
@@ -144,14 +98,11 @@ impl FileBrowser {
         self.entries.extend(dirs);
         self.entries.extend(files);
 
-        // Reset selection when refreshing.
-        self.selected = 0;
+                self.selected = 0;
         self.scroll_offset = 0;
     }
 
-    /// Resolve the selected entry to a full filesystem path.
-    /// For ".." returns the parent directory path.
-    pub fn selected_path(&self) -> Option<PathBuf> {
+            pub fn selected_path(&self) -> Option<PathBuf> {
         self.entries.get(self.selected).map(|e| {
             if e.name == ".." {
                 self.current_path.parent().unwrap_or(&self.current_path).to_path_buf()
@@ -161,10 +112,7 @@ impl FileBrowser {
         })
     }
 
-    /// Move the selection cursor up (toward index 0).
-    /// Adjusts scroll offset so the selected item stays visible
-    /// (simple viewport lock — keeps selected within the window).
-    pub fn navigate_up(&mut self) {
+                pub fn navigate_up(&mut self) {
         if self.selected > 0 {
             self.selected -= 1;
             if self.selected < self.scroll_offset {
@@ -173,20 +121,16 @@ impl FileBrowser {
         }
     }
 
-    /// Move the selection cursor down.
-    pub fn navigate_down(&mut self) {
+        pub fn navigate_down(&mut self) {
         if self.selected + 1 < self.entries.len() {
             self.selected += 1;
-            let max_visible = 18usize;  // arbitrary, matches popup_lines in ui
-            if self.selected >= self.scroll_offset + max_visible {
+            let max_visible = 18usize;              if self.selected >= self.scroll_offset + max_visible {
                 self.scroll_offset = self.selected - max_visible + 1;
             }
         }
     }
 
-    /// "Enter" the selected entry. If it is a directory, navigate into it
-    /// and return false. If it is a file, return true.
-    pub fn enter_selected(&mut self) -> bool {
+            pub fn enter_selected(&mut self) -> bool {
         let Some(entry) = self.entries.get(self.selected) else {
             return false;
         };
@@ -203,16 +147,12 @@ impl FileBrowser {
                 self.last_dir = self.current_path.clone();
                 self.refresh();
             }
-            false  // directory entered, still browsing
-        } else {
-            // File selected — remember the directory for next time.
-            self.last_dir = self.current_path.clone();
-            true   // file selected
-        }
+            false          } else {
+                        self.last_dir = self.current_path.clone();
+            true           }
     }
 
-    /// Navigate to the parent directory.
-    pub fn go_up_dir(&mut self) {
+        pub fn go_up_dir(&mut self) {
         if let Some(parent) = self.current_path.parent() {
             self.current_path = parent.to_path_buf();
             self.last_dir = self.current_path.clone();

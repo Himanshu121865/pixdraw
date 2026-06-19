@@ -1,7 +1,3 @@
-// ── ui/col.rs ────────────────────────────────────────────────────────
-// Theme colour accessors. At startup `init()` is called with the
-// config theme; after that these functions return the configured values.
-// If not initialised, they fall back to the default Tokyo Night theme.
 
 use std::sync::OnceLock;
 

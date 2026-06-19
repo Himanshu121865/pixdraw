@@ -1,10 +1,3 @@
-// ── config.rs ──────────────────────────────────────────────────────
-// Configuration loader — reads `~/.config/pixdraw/config.toml` (or
-// `./config.toml`) and provides typed access to theme colours, palette
-// colours, and keybind overrides.
-//
-// Every field has a built-in default so a missing or partial config
-// file degrades gracefully — there are no hard errors on missing keys.
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -12,7 +5,6 @@ use std::path::PathBuf;
 use ratatui::style::Color;
 use serde::Deserialize;
 
-// ── Public API ───────────────────────────────────────────────────
 pub(crate) fn load() -> Config {
     let paths = [
         dirs_config_dir().map(|d| d.join("pixdraw").join("config.toml")),
@@ -27,9 +19,7 @@ pub(crate) fn load() -> Config {
         }
     }
 
-    // No config found — generate a default one so the user can discover
-    // all available options by opening the file.
-    if let Some(config_dir) = dirs_config_dir().map(|d| d.join("pixdraw")) {
+            if let Some(config_dir) = dirs_config_dir().map(|d| d.join("pixdraw")) {
         std::fs::create_dir_all(&config_dir).ok();
         let path = config_dir.join("config.toml");
         if !path.exists() {
@@ -53,7 +43,6 @@ fn dirs_config_dir() -> Option<PathBuf> {
         .or_else(|| std::env::var("HOME").ok().map(|h| PathBuf::from(h).join(".config")))
 }
 
-// ── Theme presets ────────────────────────────────────────────────
 #[derive(Deserialize, Clone, Copy, PartialEq)]
 #[serde(rename_all = "kebab-case")]
 enum ThemePreset {
@@ -164,7 +153,6 @@ impl ThemePreset {
     }
 }
 
-// ── Raw deserialisation struct ───────────────────────────────────
 #[derive(Deserialize)]
 struct ConfigRaw {
     #[serde(default)]
@@ -196,15 +184,12 @@ struct PaletteRaw {
     colors: Option<Vec<String>>,
 }
 
-// ── Clean, parsed config ─────────────────────────────────────────
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 pub(crate) struct Config {
     pub theme: Theme,
     pub palette: Palette,
-    /// Action name → key spec (e.g. "quit" → "q", "save" → "Ctrl+S").
-    /// Empty = use built-in defaults everywhere.
-    keybinds: HashMap<String, String>,
+            keybinds: HashMap<String, String>,
 }
 
 impl Default for Config {
@@ -227,15 +212,12 @@ impl Config {
         }
     }
 
-    /// Check whether `key` matches the configured binding for
-    /// `action_name`. If no user override exists, uses `default_spec`.
-    pub(crate) fn key_is(&self, key: &KeyEvent, action_name: &str, default_spec: &str) -> bool {
+            pub(crate) fn key_is(&self, key: &KeyEvent, action_name: &str, default_spec: &str) -> bool {
         let spec = self.keybinds.get(action_name).map(|s| s.as_str()).unwrap_or(default_spec);
         key_spec_matches(key, spec)
     }
 }
 
-// ── Theme ─────────────────────────────────────────────────────────
 pub(crate) struct Theme {
     pub bg: Color,
     pub surface: Color,
@@ -247,8 +229,7 @@ pub(crate) struct Theme {
     pub tab_active_bg: Color,
     pub tab_inactive_bg: Color,
     pub status_bg: Color,
-    /// Alias — same value as `subtle`.
-    pub dim: Color,
+        pub dim: Color,
 }
 
 fn hex_to_color(hex: &str, fallback: Color) -> Color {
@@ -297,7 +278,6 @@ impl Theme {
     }
 }
 
-// ── Palette ──────────────────────────────────────────────────────
 pub(crate) struct Palette {
     pub colors: Vec<Color>,
     pub names: Vec<String>,
@@ -345,9 +325,6 @@ impl Palette {
     }
 }
 
-// ── Default config generation ───────────────────────────────────
-// Called on first run — writes a fully-commented config file so
-// every available option is discoverable just by opening the file.
 
 fn default_config_content() -> String {
     r##"# ── Opendraw Configuration ─────────────────────────────────────────
@@ -464,8 +441,6 @@ fn default_config_content() -> String {
     .to_string()
 }
 
-// ── Key spec parser ──────────────────────────────────────────────
-// Maps user-facing strings like "Ctrl+S" onto crossterm's (KeyModifiers, KeyCode).
 fn key_spec_matches(key: &KeyEvent, spec: &str) -> bool {
     let (modifiers, code) = parse_key_spec(spec);
     key.modifiers == modifiers && key.code == code
@@ -474,8 +449,7 @@ fn key_spec_matches(key: &KeyEvent, spec: &str) -> bool {
 fn parse_key_spec(spec: &str) -> (KeyModifiers, KeyCode) {
     let spec = spec.trim();
 
-    // Special case: Shift+Tab is reported as BackTab by crossterm.
-    if spec.eq_ignore_ascii_case("Shift+Tab") || spec.eq_ignore_ascii_case("BackTab") {
+        if spec.eq_ignore_ascii_case("Shift+Tab") || spec.eq_ignore_ascii_case("BackTab") {
         return (KeyModifiers::NONE, KeyCode::BackTab);
     }
 
@@ -510,11 +484,8 @@ fn parse_key_spec(spec: &str) -> (KeyModifiers, KeyCode) {
             let n: u8 = s[1..].parse().unwrap_or(1);
             KeyCode::F(n)
         }
-        // Single-character bindings — lowercased because crossterm
-        // reports Ctrl+letter as the lowercase variant.
-        s if s.len() == 1 => KeyCode::Char(s.to_ascii_lowercase().chars().next().unwrap()),
-        _ => KeyCode::Char('?'), // fallback
-    };
+                        s if s.len() == 1 => KeyCode::Char(s.to_ascii_lowercase().chars().next().unwrap()),
+        _ => KeyCode::Char('?'),     };
 
     (mods, code)
 }

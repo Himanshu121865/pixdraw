@@ -1,19 +1,3 @@
-// ── ui/canvas.rs ─────────────────────────────────────────────────────
-// The canvas is the heart of pixdraw. This module handles everything
-// that appears inside the bordered canvas area: pixels, grid dots, the
-// brush cursor preview, and text overlays.
-//
-// Two rendering strategies (why direct buffer?):
-//   Ratatui's `Canvas` widget is a high-level painter that maps floating-
-//   point coordinates to cells. For pixel art, this adds overhead —
-//   every point goes through a HashMap → f64 conversion → half-block
-//   mapping pipeline, and the coordinate system doesn't align with
-//   integer pixel positions.
-//
-//   Direct buffer access (`frame.buffer_mut().cell_mut()`) sidesteps
-//   all that: each pixel is a full-block character (█) at its exact cell
-//   position. No HashMap, no floats, no half-block alignment issues.
-//   Just (x, y) → cell. Simple and fast.
 
 use ratatui::{
     Frame,
@@ -27,13 +11,6 @@ use crate::app::{DrawingApp, ShapeKind};
 
 use super::col::*;
 
-/// Render the drawing canvas: a bordered block with pixel data painted
-/// via direct buffer cell manipulation.
-///
-/// Every pixel occupies exactly one terminal cell — no half-block
-/// mapping, no HashMap allocation per frame. The trade-off is that
-/// each frame must redraw every pixel (the buffer is reset by Ratatui),
-/// but iterating a few thousand entries is fast enough in practice.
 pub fn render_canvas(
     app: &mut DrawingApp,
     frame: &mut Frame<'_>,
@@ -42,13 +19,7 @@ pub fn render_canvas(
     canvas_height: u16,
     shape_preview: Option<(Position, Position, ShapeKind)>,
 ) {
-    // ── Virtual canvas ───────────────────────────────────────────
-    // "Virtual canvas" means the user has set a fixed canvas size
-    // (via Ctrl+R or by loading an image). When set, the visible
-    // block is constrained to that size + 2 (for the border) and
-    // centered on screen. When unset (0,0), the canvas fills the
-    // entire available body area.
-    let has_virtual_size = canvas_width > 0 && canvas_height > 0;
+                            let has_virtual_size = canvas_width > 0 && canvas_height > 0;
 
     let canvas_block_width = if has_virtual_size {
         canvas_width.saturating_add(2).min(area.width)
@@ -61,14 +32,11 @@ pub fn render_canvas(
         area.height
     };
 
-    // Centre the block within the available area.
-    let block_x = area.x + (area.width - canvas_block_width) / 2;
+        let block_x = area.x + (area.width - canvas_block_width) / 2;
     let block_y = area.y + (area.height - canvas_block_height) / 2;
     let block_area = Rect::new(block_x, block_y, canvas_block_width, canvas_block_height);
 
-    // ── Title bar ────────────────────────────────────────────────
-    // Shows current tool mode, brush colour swatch, and brush size.
-    let mode_indicator = app.mode_string();
+            let mode_indicator = app.mode_string();
     let title_suffix = if !mode_indicator.is_empty() {
         format!("  [{}]", mode_indicator)
     } else {
@@ -82,43 +50,21 @@ pub fn render_canvas(
             Style::default().fg(subtle())),
     ]);
 
-    // Draw just the border frame — the interior pixels are drawn
-    // cell-by-cell below.
-    frame.render_widget(
+            frame.render_widget(
         Block::bordered()
             .border_style(Style::default().fg(border()))
             .title(title),
         block_area,
     );
 
-    // `inner` is the drawable area INSIDE the border (1 cell inset).
-    let inner = block_area.inner(Margin { horizontal: 1, vertical: 1 });
+        let inner = block_area.inner(Margin { horizontal: 1, vertical: 1 });
     app.canvas_area = inner;
 
-    // ── Clipping ─────────────────────────────────────────────────
-    // clip_w/clip_h define the virtual canvas bounds (from which
-    // pixels are loaded). y_max is the visible height — pixels with
-    // y > y_max are beyond the terminal's displayable rows and must
-    // be skipped (otherwise they'd wrap around or glitch).
-    let clip_w = if has_virtual_size { canvas_width } else { u16::MAX };
+                        let clip_w = if has_virtual_size { canvas_width } else { u16::MAX };
     let clip_h = if has_virtual_size { canvas_height } else { u16::MAX };
     let y_max = inner.height.saturating_sub(1);
 
-    // ── Pixel drawing ────────────────────────────────────────────
-    // We bypass Ratatui's Canvas widget entirely. Instead, we reach
-    // into the frame's cell buffer directly and set each pixel as a
-    // full-block character (█) with the pixel's colour as foreground.
-    //
-    // Why not use Cell's background colour?
-    //   Using bg() would fill the entire cell background, including
-    //   the gutter around the character — but then we'd lose the
-    //   half-block resolution. For pixel art, fg() with █ is crisp
-    //   and unambiguous.
-    //
-    // The guard `y > y_max` is critical: without it, `y_max - y`
-    // would underflow (via saturating_sub) to 0, making all off-
-    // screen pixel rows pile up on the bottom line and flicker.
-    for (&(x, y), &c) in &app.points {
+                                                            for (&(x, y), &c) in &app.points {
         if x >= clip_w || y >= clip_h || y > y_max { continue; }
         let cx = inner.x.saturating_add(x);
         let cy = inner.y.saturating_add(y);
@@ -128,13 +74,7 @@ pub fn render_canvas(
         }
     }
 
-    // ── Shape preview ────────────────────────────────────────────
-    // When the user drags to draw a shape, this generates the preview
-    // points and renders them in the same direct-buffer style.
-    // Shape preview is purely visual — the actual shape is committed
-    // to `points` only when the mouse button is released. This lets
-    // the user see what they're drawing before committing.
-    if let Some((anchor, end, kind)) = shape_preview {
+                            if let Some((anchor, end, kind)) = shape_preview {
         let color = app.draw_color();
         let preview_pts = match kind {
             ShapeKind::Rect => {
@@ -220,21 +160,12 @@ pub fn render_canvas(
     }
 }
 
-/// Overlay a grid of dots every 4 cells across the canvas.
-/// Only draws on empty cells (`cell.symbol() == " "`) to avoid
-/// overwriting existing pixels.
-///
-/// Why every 4 cells?
-///   A 4-cell grid is fine enough for alignment guides but sparse
-///   enough to stay subtle. It's a standard choice in pixel editors.
 pub fn render_grid(frame: &mut Frame<'_>, canvas: Rect) {
     let step = 4u16;
-    // `inner` is the area inside the border (1 cell inset on each side).
-    let inner = Rect::new(canvas.x + 1, canvas.y + 1, canvas.width - 2, canvas.height - 2);
+        let inner = Rect::new(canvas.x + 1, canvas.y + 1, canvas.width - 2, canvas.height - 2);
     for y in (inner.y..inner.y.saturating_add(inner.height)).step_by(step as usize) {
         for x in (inner.x..inner.x.saturating_add(inner.width)).step_by(step as usize) {
-            // Only draw on empty cells so grid dots don't stomp on pixels.
-            if let Some(cell) = frame.buffer_mut().cell_mut(Position::new(x, y))
+                        if let Some(cell) = frame.buffer_mut().cell_mut(Position::new(x, y))
                 && cell.symbol() == " " {
                     cell.set_char('·').set_style(Style::default().fg(dim()));
                 }
@@ -242,25 +173,6 @@ pub fn render_grid(frame: &mut Frame<'_>, canvas: Rect) {
     }
 }
 
-/// Show a brush-outline cursor at the current mouse position.
-/// For `brush_size == 1`, shows a single dot (`·`). For larger brushes,
-/// shows a circle of dots matching the brush radius.
-///
-/// Cursor colour indicates the active tool:
-///   - White  = brush (normal draw)
-///   - Red    = eraser mode
-///   - Green  = fill mode
-///   - Yellow = eyedropper mode
-///
-/// Why draw on the buffer instead of using Ratatui's cursor?
-///   The terminal cursor can only show position, not shape or colour.
-///   Drawing a custom cursor lets us show the brush radius and tool
-///   colour at a glance — essential for pixel art.
-///
-/// Only draws on cells where `cell.symbol() == " "` so the cursor
-/// preview never overwrites existing pixels. This means when the
-/// cursor hovers over a pixel, the preview dot simply disappears
-/// instead of corrupting the pixel — a deliberate UX choice.
 pub fn render_cursor_preview(app: &DrawingApp, frame: &mut Frame<'_>, canvas: Rect) {
     let Some(mpos) = app.mouse_position else { return };
     let Some(local) = app.local_canvas_position(mpos) else { return };
@@ -302,30 +214,13 @@ pub fn render_cursor_preview(app: &DrawingApp, frame: &mut Frame<'_>, canvas: Re
     }
 }
 
-/// Render placed and in-progress text on the canvas.
-///
-/// Placed text (from `text_entries`) uses the current palette colour.
-/// In-progress text (while typing, stored in `text_buffer`) previews
-/// in white with a `▌` block cursor at the insertion point.
-///
-/// Text colour is NOT stored per-entry — it always uses the palette's
-/// current colour when drawn. This is a deliberate simplification:
-/// text inherits the active colour, just like brush strokes.
-///
-/// Text never overwrites pixels: the `occupied` set tracks all pixel
-/// positions, and text characters skip occupied cells.
 pub fn render_text_overlay(app: &DrawingApp, frame: &mut Frame<'_>, canvas: Rect) {
-    // Fast path: when there's no text at all, skip the entire function
-    // (including the expensive occupied-set build from all points).
-    if app.text_entries.is_empty() && !app.text_mode { return; }
+            if app.text_entries.is_empty() && !app.text_mode { return; }
 
     let inner_x0 = canvas.x + 1;
     let inner_y0 = canvas.y + 1;
 
-    // Build a set of all pixel positions so we don't paint text on top of them.
-    // This is O(n) in the number of pixels — acceptable since text rendering
-    // is rare compared to plain drawing.
-    let mut occupied: std::collections::HashSet<(u16, u16)> = std::collections::HashSet::new();
+                let mut occupied: std::collections::HashSet<(u16, u16)> = std::collections::HashSet::new();
     for (x, y) in app.points.keys() {
         occupied.insert((*x, *y));
     }
@@ -344,10 +239,7 @@ pub fn render_text_overlay(app: &DrawingApp, frame: &mut Frame<'_>, canvas: Rect
         }
     }
 
-    // ── In-progress text preview ─────────────────────────────────
-    // While typing (text_mode), the buffer is shown in white as a
-    // live preview. Press Enter to commit, Esc to cancel.
-    if app.text_mode && !app.text_buffer.is_empty()
+                if app.text_mode && !app.text_buffer.is_empty()
         && let Some(tpos) = app.text_cursor {
             for (ci, ch) in app.text_buffer.chars().enumerate() {
                 let cx = inner_x0 + tpos.x + ci as u16;
@@ -356,10 +248,7 @@ pub fn render_text_overlay(app: &DrawingApp, frame: &mut Frame<'_>, canvas: Rect
                     cell.set_char(ch).set_style(Style::default().fg(Color::White));
                 }
             }
-            // Cursor: a right-half block character (▌) at the end of the buffer.
-            // White on white creates a solid block that visually marks the
-            // insertion point — more visible than a simple underscore.
-            let cursor_cx = inner_x0 + tpos.x + app.text_buffer.len() as u16;
+                                                let cursor_cx = inner_x0 + tpos.x + app.text_buffer.len() as u16;
             let cursor_cy = inner_y0 + tpos.y;
             if let Some(cell) = frame.buffer_mut().cell_mut(Position::new(cursor_cx, cursor_cy)) {
                 cell.set_char('▌').set_style(Style::default().fg(Color::White).bg(Color::White));

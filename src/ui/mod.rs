@@ -1,12 +1,3 @@
-// ── ui/mod.rs ────────────────────────────────────────────────────────
-// Re-export all public UI rendering functions so the `app` module (and
-// anyone else) can call `ui::layout()`, `ui::render_header()`, etc.
-//
-// Why a re-export module?
-//   Each rendering function lives in its own file (for organisation),
-//   but callers outside the `ui` module don't need to know the file
-//   structure. The re-exports provide a flat namespace: `ui::layout`
-//   instead of `ui::layout::layout`.
 
 mod col;
 mod layout;

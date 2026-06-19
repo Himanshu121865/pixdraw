@@ -1,25 +1,3 @@
-// ── app/event.rs ──────────────────────────────────────────────────────
-// Main event loop dispatch: reads keyboard and mouse events from
-// Crossterm and delegates to DrawingApp methods.
-//
-// Popup-specific handlers (colour picker, file browser, text mode,
-// context menu, resize dialog, etc.) live in `popup.rs` — they
-// are called from here via `self.on_key_*()`.
-//
-// Mouse handling (drawing, erasing, shaping, selecting, etc.) is
-// in `mouse.rs` — extracted to keep this file focused on keyboard.
-//
-// Crossterm event model:
-//   event::read() blocks until a Key or Mouse event arrives.
-//   Key events have `kind`: Press, Repeat, or Release.
-//     We only handle Press — repeats are ignored to avoid
-//     double-processing from key repeat.
-//   Mouse events have `kind`: Down, Up, Drag, ScrollUp/Down,
-//     and Moved. The `kind` field tells us what the user did.
-//
-// Ratatui coordinate system:
-//   Position(x, y) where x is column, y is row (0,0 = top-left).
-//   This matches terminal cell coordinates from crossterm.
 
 use std::io;
 
@@ -31,8 +9,7 @@ use crate::app::{DrawingApp, ShapeKind};
 use crate::file_browser::FileBrowserMode;
 
 impl DrawingApp {
-    /// Process a single raw crossterm event (non-blocking — event is already read).
-    pub fn handle_raw_event(&mut self, event: &Event) -> io::Result<()> {
+        pub fn handle_raw_event(&mut self, event: &Event) -> io::Result<()> {
         match event {
             Event::Key(key) => self.on_key(*key),
             Event::Mouse(mouse) => self.on_mouse(*mouse),
@@ -41,19 +18,14 @@ impl DrawingApp {
     }
 
     pub fn handle_event(&mut self) -> io::Result<()> {
-        // Auto-backup every 60 seconds — silent save to session file.
-        // The `let _ =` discards any IO error; a failed backup is non-fatal.
-        if self.last_backup.elapsed().as_secs() >= 60 {
+                        if self.last_backup.elapsed().as_secs() >= 60 {
             let _ = self.save_session();
             self.last_backup = std::time::Instant::now();
         }
 
-        // If the file browser is active, route all events through its
-        // own handler (which reads one event internally).
-        if self.file_browser.active {
+                        if self.file_browser.active {
             let result = self.handle_file_browser_event();
-            // Special case: startup dialog "Save & New" path.
-            if !self.file_browser.active && self.startup_save_and_new {
+                        if !self.file_browser.active && self.startup_save_and_new {
                 DrawingApp::delete_session();
                 self.show_startup_dialog = false;
                 self.startup_save_and_new = false;
@@ -62,11 +34,7 @@ impl DrawingApp {
         }
 
         if self.life_mode {
-            // Auto-advance GoL every 150ms while in life mode.
-            // Polls for events with a timeout — if the user clicks or
-            // presses a key, we handle it immediately. Otherwise the
-            // simulation advances one generation.
-            if event::poll(std::time::Duration::from_millis(150))? {
+                                                            if event::poll(std::time::Duration::from_millis(150))? {
                 match event::read()? {
                     event::Event::Key(key) => self.on_key(key)?,
                     event::Event::Mouse(mouse) => self.on_mouse(mouse)?,
@@ -85,37 +53,26 @@ impl DrawingApp {
         Ok(())
     }
 
-    // ── Keyboard dispatch ─────────────────────────────────────────
-
+    
     fn on_key(&mut self, key: KeyEvent) -> io::Result<()> {
-        // Only handle Press events — ignore auto-repeat and release.
-        if key.kind != KeyEventKind::Press {
+                if key.kind != KeyEventKind::Press {
             return Ok(());
         }
 
-        // ── Popup priority dispatch ──────────────────────────────
-        // Popups that capture ALL input are checked first. The early
-        // return means no other keybinds fire while these are open.
-        //
-        // Order matters: if two popups are somehow both open, the
-        // first match wins. In practice only one should be active.
-
+                                                
         if self.show_color_picker {
             return self.on_key_color_picker(key);
         }
         if self.show_color_selector {
             return self.on_key_color_selector(key);
         }
-        // Text mode captures ALL keys when active — including letters
-        // that would otherwise trigger tool modes.
-        if self.text_mode {
+                        if self.text_mode {
             return self.on_key_text_mode(key);
         }
         if self.show_help {
             if self.help_search_active {
                 match key.code {
-                    // Esc: if buffer is non-empty, clear it; otherwise exit search mode.
-                    KeyCode::Esc => {
+                                        KeyCode::Esc => {
                         if !self.help_search_buffer.is_empty() {
                             self.help_search_buffer.clear();
                         } else {
@@ -123,8 +80,7 @@ impl DrawingApp {
                         }
                     }
                     KeyCode::Enter => {
-                        // Commit search results, stay in filtered view.
-                        self.help_search_active = false;
+                                                self.help_search_active = false;
                     }
                     KeyCode::Backspace => {
                         self.help_search_buffer.pop();
@@ -136,9 +92,7 @@ impl DrawingApp {
                 }
             } else {
                 match key.code {
-                    // Esc in browse mode: if there's a filter, clear it and go back to search;
-                    // otherwise close help.
-                    KeyCode::Esc => {
+                                                            KeyCode::Esc => {
                         if !self.help_search_buffer.is_empty() {
                             self.help_search_buffer.clear();
                             self.help_search_active = true;
@@ -168,8 +122,7 @@ impl DrawingApp {
                     KeyCode::Char('0') => {
                         self.help_cat_expanded = [false; 9];
                     }
-                    // i reactivates search from browse mode.
-                    KeyCode::Char('i') => {
+                                        KeyCode::Char('i') => {
                         self.help_search_active = true;
                     }
                     _ => {}
@@ -193,11 +146,7 @@ impl DrawingApp {
             return self.on_key_tab_rename(key);
         }
 
-        // ── Main keybinds (no modal popup active) ────────────────
-        //
-        // match on key.code only — most binds don't need modifiers.
-        // When they do (Ctrl+letter), the guard clause checks modifiers.
-
+                                
         match key.code {
             KeyCode::Char('q') => {
                 let _ = self.save_session();
@@ -214,8 +163,7 @@ impl DrawingApp {
                 }
             }
 
-            // ── Tab management ────────────────────────────────
-            KeyCode::Char('t') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        KeyCode::Char('t') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 self.new_tab();
             }
             KeyCode::Char('w') if key.modifiers.contains(KeyModifiers::CONTROL) => {
@@ -232,8 +180,7 @@ impl DrawingApp {
                 }
             }
 
-            // ── Ctrl combos ────────────────────────────────────
-            KeyCode::Char('z') if key.modifiers.contains(KeyModifiers::CONTROL) => self.undo(),
+                        KeyCode::Char('z') if key.modifiers.contains(KeyModifiers::CONTROL) => self.undo(),
             KeyCode::Char('y') if key.modifiers.contains(KeyModifiers::CONTROL) => self.redo(),
             KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 self.file_browser.open(FileBrowserMode::Save);
@@ -251,8 +198,7 @@ impl DrawingApp {
                 self.cut_selection();
             }
             KeyCode::Char('v') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                // Paste at the stored mouse position. If unavailable, do nothing.
-                if let Some(mpos) = self.mouse_position
+                                if let Some(mpos) = self.mouse_position
                     && let Some(local) = self.local_canvas_position(mpos) {
                         self.paste_selection(local);
                     }
@@ -266,16 +212,14 @@ impl DrawingApp {
                 }
             }
 
-            // ── Clear canvas ──────────────────────────────────────
-            KeyCode::Char('c') => {
+                        KeyCode::Char('c') => {
                 self.push_history();
                 self.points.clear();
                 self.text_entries.clear();
                 self.last_localition = None;
             }
 
-            // ── Selection nudge (arrow keys) ──────────────────────
-            KeyCode::Up
+                        KeyCode::Up
                 if self.select_mode && self.selection_start.is_some() => {
                     self.nudge_selection(0, -1i16);
                 }
@@ -297,11 +241,7 @@ impl DrawingApp {
                 self.tab_rename_buffer = self.tab_name().to_string();
             }
 
-            // ── Tool toggles ──────────────────────────────────────
-            // Each tool key toggles the mode on/off. For exclusive
-            // tool groups (spray, eraser, eyedropper, fill), activating
-            // one deactivates the others.
-
+                                                
             KeyCode::Char('e') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 self.file_browser.open(FileBrowserMode::ExportPng);
             }
@@ -356,8 +296,7 @@ impl DrawingApp {
                     self.posterize(8);
             }
 
-            // ── Colour / palette ───────────────────────────────
-            KeyCode::Char('n') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        KeyCode::Char('n') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 self.show_color_picker = true;
             }
             KeyCode::Char(' ') => {
@@ -376,8 +315,7 @@ impl DrawingApp {
                 self.push_color_history(self.palette.current());
             }
 
-            // ── Shape tools ─────────────────────────────────────
-            KeyCode::Char('r') => {
+                        KeyCode::Char('r') => {
                 self.shape_mode = Some(ShapeKind::Rect);
                 self.shape_anchor = None;
             }
@@ -398,8 +336,7 @@ impl DrawingApp {
                 self.line_anchor = None;
             }
 
-            // ── Select / gradient ──────────────────────────────
-            KeyCode::Char('s') => {
+                        KeyCode::Char('s') => {
                 self.select_mode = !self.select_mode;
                 if !self.select_mode {
                     self.selection_start = None;
@@ -413,8 +350,7 @@ impl DrawingApp {
                 self.gradient_anchor = None;
             }
 
-            // ── Custom colour generation ─────────────────────────
-            KeyCode::Char('u') => {
+                        KeyCode::Char('u') => {
                 self.generate_three_colors();
                 self.color_selector_idx = 0;
                 self.show_color_selector = true;
@@ -428,10 +364,8 @@ impl DrawingApp {
                     self.custom_cycle_idx = (self.custom_cycle_idx + 1) % self.custom_colors.len();
             }
 
-            // ── Universal escape: reset everything to brush ─────
-            KeyCode::Esc => {
-                // Reset all tool modes back to plain brush.
-                self.line_mode = false;
+                        KeyCode::Esc => {
+                                self.line_mode = false;
                 self.spray_mode = false;
                 self.text_mode = false;
                 self.shape_mode = None;
@@ -449,16 +383,14 @@ impl DrawingApp {
                 self.gradient_anchor = None;
                 self.shape_preview = None;
                 self.life_mode = false;
-                // Dismiss any open popup.
-                self.show_context_menu = false;
+                                self.show_context_menu = false;
                 self.show_color_selector = false;
                 self.show_color_input = false;
                 self.show_canvas_resize = false;
                 self.show_tab_rename = false;
             }
 
-            // ── Brush size ─────────────────────────────────────
-            KeyCode::Char('[') | KeyCode::Char('-')
+                        KeyCode::Char('[') | KeyCode::Char('-')
                 if self.brush_size > 1 => {
                     self.brush_size -= 1;
                 }

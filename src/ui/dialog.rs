@@ -1,6 +1,3 @@
-// ── ui/dialog.rs ──────────────────────────────────────────────────────
-// Small popup dialogs: tab rename, startup restore, context menu,
-// and canvas resize. Each is small enough to share a file.
 
 use ratatui::{
     Frame,
@@ -12,9 +9,7 @@ use ratatui::{
 
 use super::col::*;
 
-// ── Tab rename ──────────────────────────────────────────────────────
 
-/// Render the tab rename input dialog.
 pub fn render_tab_rename_dialog(frame: &mut Frame<'_>, screen: Rect, buffer: &str) {
     let width = 42u16.min(screen.width.saturating_sub(4));
     let height = 5;
@@ -41,10 +36,7 @@ pub fn render_tab_rename_dialog(frame: &mut Frame<'_>, screen: Rect, buffer: &st
     frame.render_widget(Paragraph::new(display), inner);
 }
 
-// ── Startup dialog ──────────────────────────────────────────────────
 
-/// Render the "Previous session found" restore dialog.
-/// Three options: Restore, Save & New, Discard & New.
 pub fn render_startup_dialog(
     frame: &mut Frame<'_>,
     screen: Rect,
@@ -88,9 +80,7 @@ pub fn render_startup_dialog(
     Paragraph::new(lines).alignment(Alignment::Center).render(inner, frame.buffer_mut());
 }
 
-// ── Context menu ────────────────────────────────────────────────────
 
-/// Render the right-click context menu at the stored click position.
 pub fn render_context_menu(
     frame: &mut Frame<'_>,
     screen: Rect,
@@ -124,9 +114,7 @@ pub fn render_context_menu(
     frame.render_widget(Paragraph::new(lines), inner);
 }
 
-// ── Canvas resize dialog ────────────────────────────────────────────
 
-/// Render the canvas resize dialog where users type width and height.
 pub fn render_canvas_resize_dialog(
     frame: &mut Frame<'_>,
     screen: Rect,

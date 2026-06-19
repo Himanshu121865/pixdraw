@@ -1,7 +1,3 @@
-// ── ui/popups.rs ─────────────────────────────────────────────────────
-// File browser popup renderer.
-// Other popup renderers (help, startup, context menu, resize, rename)
-// live in help_popup.rs and dialog.rs.
 
 use ratatui::{
     Frame,
@@ -14,7 +10,6 @@ use ratatui::{
 use crate::app::DrawingApp;
 use super::col::*;
 
-/// Render the file open/save dialog.
 pub fn render_file_browser(app: &mut DrawingApp, frame: &mut Frame<'_>, screen: Rect) {
     let width = 50u16.min(screen.width.saturating_sub(4));
     let height = 26u16.min(screen.height.saturating_sub(4));
@@ -36,8 +31,7 @@ pub fn render_file_browser(app: &mut DrawingApp, frame: &mut Frame<'_>, screen: 
     frame.render_widget(Clear, area);
     block.render(area, frame.buffer_mut());
 
-    // Path display (clipped to fit).
-    let path_str = app.file_browser.current_path.to_string_lossy();
+        let path_str = app.file_browser.current_path.to_string_lossy();
     let max_path_len = inner.width as usize;
     let display_path = if path_str.len() > max_path_len {
         format!("…{}", &path_str[path_str.len().saturating_sub(max_path_len - 1)..])
@@ -50,15 +44,13 @@ pub fn render_file_browser(app: &mut DrawingApp, frame: &mut Frame<'_>, screen: 
     )))
     .render(Rect::new(inner.x, inner.y, inner.width, 1), frame.buffer_mut());
 
-    // Separator line below the path.
-    for sx in inner.x..inner.x.saturating_add(inner.width) {
+        for sx in inner.x..inner.x.saturating_add(inner.width) {
         if let Some(cell) = frame.buffer_mut().cell_mut(Position::new(sx, inner.y + 1)) {
             cell.set_char('─').set_style(Style::default().fg(dim()));
         }
     }
 
-    // File list viewport.
-    let list_y = inner.y + 2;
+        let list_y = inner.y + 2;
     let list_height = inner.height.saturating_sub(5);
     let entries: Vec<(String, bool)> = app
         .file_browser
@@ -94,16 +86,14 @@ pub fn render_file_browser(app: &mut DrawingApp, frame: &mut Frame<'_>, screen: 
             }
         }
 
-        // Clear the rest of the row.
-        for cx in (inner.x + line_chars.len() as u16)..inner.x.saturating_add(inner.width) {
+                for cx in (inner.x + line_chars.len() as u16)..inner.x.saturating_add(inner.width) {
             if let Some(cell) = frame.buffer_mut().cell_mut(Position::new(cx, row_y)) {
                 cell.set_char(' ').set_style(Style::default().bg(bg));
             }
         }
     }
 
-    // Bottom hint / filename input.
-    let footer_y = inner.y + inner.height - 2;
+        let footer_y = inner.y + inner.height - 2;
     let is_save_like = app.file_browser.mode == crate::file_browser::FileBrowserMode::Save
         || app.file_browser.mode == crate::file_browser::FileBrowserMode::ExportPng;
     if is_save_like {
@@ -133,8 +123,7 @@ pub fn render_file_browser(app: &mut DrawingApp, frame: &mut Frame<'_>, screen: 
         .render(Rect::new(inner.x, footer_y, inner.width, 1), frame.buffer_mut());
     }
 
-    // Top hint (embedded in the separator line).
-    Paragraph::new(Line::from(Span::styled(
+        Paragraph::new(Line::from(Span::styled(
         format!(" ↑↓ navigate  Enter select  Tab parent  Esc cancel    [{} entries]",
             app.file_browser.entries.len()),
         Style::default().fg(dim()),
@@ -142,4 +131,3 @@ pub fn render_file_browser(app: &mut DrawingApp, frame: &mut Frame<'_>, screen: 
     .render(Rect::new(inner.x, inner.y + 1, inner.width, 1), frame.buffer_mut());
 }
 
-// No other popup renderers in this file — see help_popup.rs and dialog.rs.

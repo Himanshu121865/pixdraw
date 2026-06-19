@@ -1,15 +1,3 @@
-// ── ui/palette_bar.rs ───────────────────────────────────────────────
-// Single-row palette bar (footer) with colour swatches, custom colour
-// slots, and three colour-related popups: picker, selector, and input.
-//
-// The palette bar renders at the very bottom of the screen and shows:
-//   "Palette:" label
-//   14 colour swatches (○ for unselected, ● for current)
-//   Separator ┆
-//   Custom colour slots (C1◇ C2◆ etc.)
-//
-// All three colour popups (picker, selector, input) are rendered here
-// because they're closely related to colour selection logic.
 
 use ratatui::{
     Frame,
@@ -22,9 +10,6 @@ use ratatui::{
 use crate::app::DrawingApp;
 use super::col::*;
 
-/// Render the palette bar at the bottom footer area.
-/// Each palette colour is a single character: ○ (not selected) or ● (selected).
-/// Custom colours show as C1◇ (not active) or C1◆ (active).
 pub fn render_palette_bar(
     frame: &mut Frame<'_>,
     area: Rect,
@@ -35,8 +20,7 @@ pub fn render_palette_bar(
 ) {
     let row = area.y;
 
-    // Clear the row first.
-    for x in area.x..area.x.saturating_add(area.width) {
+        for x in area.x..area.x.saturating_add(area.width) {
         if let Some(cell) = frame.buffer_mut().cell_mut(Position::new(x, row)) {
             cell.set_char(' ').set_style(Style::default().bg(bg()));
         }
@@ -66,16 +50,14 @@ pub fn render_palette_bar(
         x += 1;
     }
 
-    // Separator between palette and custom colours.
-    if !custom_colors.is_empty() && x < max_x {
+        if !custom_colors.is_empty() && x < max_x {
         if let Some(cell) = frame.buffer_mut().cell_mut(Position::new(x, row)) {
             cell.set_char('┆').set_style(Style::default().fg(subtle()));
         }
         x += 1;
     }
 
-    // Custom colour slots.
-    for (slot, c) in custom_colors.iter().enumerate() {
+        for (slot, c) in custom_colors.iter().enumerate() {
         if x >= max_x { break; }
         let label = format!("C{}", slot + 1);
         for (ci, ch) in label.chars().enumerate() {
@@ -97,9 +79,6 @@ pub fn render_palette_bar(
     }
 }
 
-/// Render the colour picker overlays on the canvas edge.
-/// Shows all palette colours and custom colours in a vertical list.
-/// The picker is triggered by ^Tab or clicking the colour swatch.
 pub fn render_color_picker(app: &mut DrawingApp, frame: &mut Frame<'_>, canvas: Rect) {
     let custom_count = app.custom_colors.len() as u16;
     let total = app.palette.colors.len() as u16 + custom_count;
@@ -109,8 +88,7 @@ pub fn render_color_picker(app: &mut DrawingApp, frame: &mut Frame<'_>, canvas: 
     let y = canvas.y + canvas.height - height;
     let area = Rect::new(x, y, width, height);
 
-    // Fill background.
-    for yy in area.y..area.y.saturating_add(area.height) {
+        for yy in area.y..area.y.saturating_add(area.height) {
         for xx in area.x..area.x.saturating_add(area.width) {
             if let Some(cell) = frame.buffer_mut().cell_mut(Position::new(xx, yy)) {
                 cell.set_char(' ').set_style(Style::default().bg(bg()));
@@ -158,9 +136,6 @@ pub fn render_color_picker(app: &mut DrawingApp, frame: &mut Frame<'_>, canvas: 
     frame.render_widget(Paragraph::new(lines), inner);
 }
 
-/// Render the colour selector popup for custom colours.
-/// Triggered by pressing `u` to generate 3 random colours.
-/// Shows the three generated colours with their RGB values.
 pub fn render_color_selector(
     frame: &mut Frame<'_>,
     area: Rect,
@@ -197,8 +172,7 @@ pub fn render_color_selector(
         ]));
     }
 
-    // "Custom RGB..." option — always appears after the generated colours.
-    let is_custom_selected = selected_idx == custom_colors.len();
+        let is_custom_selected = selected_idx == custom_colors.len();
     let custom_prefix = if is_custom_selected { "▸" } else { " " };
     lines.push(Line::from(vec![
         Span::styled(format!("{} ", custom_prefix), Style::default().fg(if is_custom_selected { accent() } else { dim() })),
@@ -213,8 +187,6 @@ pub fn render_color_selector(
     frame.render_widget(Paragraph::new(lines), inner);
 }
 
-/// Render the custom RGB colour input dialog.
-/// Users type "R G B" or "R,G,B" values and see a live preview of the colour.
 pub fn render_color_input(frame: &mut Frame<'_>, screen: Rect, buffer: &str) {
     let width = 34u16.min(screen.width.saturating_sub(4));
     let height = 6;
@@ -229,8 +201,7 @@ pub fn render_color_input(frame: &mut Frame<'_>, screen: Rect, buffer: &str) {
     frame.render_widget(Clear, area);
     block.render(area, frame.buffer_mut());
 
-    // Live preview of the colour being typed.
-    let preview_color = DrawingApp::parse_rgb_buffer(buffer);
+        let preview_color = DrawingApp::parse_rgb_buffer(buffer);
     let line1 = if let Some(c) = preview_color {
         let (r, g, b) = match c {
             Color::Rgb(r, g, b) => (r, g, b),

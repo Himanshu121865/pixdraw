@@ -1,16 +1,3 @@
-// ── app/mouse.rs ──────────────────────────────────────────────────────
-// Mouse event dispatch: drawing, erasing, shaping, selecting, and all
-// other canvas interactions. Extracted from event.rs to keep keyboard
-// and mouse handling separate.
-//
-// Crossterm mouse events carry:
-//   - column, row (screen coordinates)
-//   - kind: Down, Up, Drag, Moved, ScrollUp, ScrollDown
-//   - button: Left, Right, Middle, None
-//   - modifiers: Shift, Ctrl, Alt, etc.
-//
-// We don't handle Moved events (they would flood the render loop).
-// Only Down, Up, Drag, and Scroll events are processed.
 
 use std::io;
 
@@ -28,12 +15,7 @@ impl DrawingApp {
         let position = Position::new(event.column, event.row);
         self.mouse_position = Some(position);
 
-        // ── Cursor teleport ────────────────────────────────────
-        // crossterm's mouse tracking doesn't move the terminal cursor
-        // automatically. We manually `MoveTo` the cursor whenever it
-        // jumps by ≥4 cells (Chebyshev distance). This keeps the
-        // terminal cursor near the mouse for widgets that use it.
-        let should_teleport = self
+                                                let should_teleport = self
             .last_cursor_position
             .is_none_or(|last| distance(last, position) >= 4);
         if should_teleport {
@@ -41,16 +23,13 @@ impl DrawingApp {
             self.last_cursor_position = Some(position);
         }
 
-        // ── Palette bar click ────────────────────────────────
-        // Handle BEFORE any mode-specific logic.
-        if let MouseEventKind::Down(MouseButton::Left) = event.kind
+                        if let MouseEventKind::Down(MouseButton::Left) = event.kind
             && self.palette_bar_area.contains(position) {
                 self.handle_palette_bar_click(position);
                 return Ok(());
         }
 
-        // ── Context menu click ──────────────────────────────
-        if self.show_context_menu
+                if self.show_context_menu
             && let MouseEventKind::Down(MouseButton::Left) = event.kind {
                 let menu_width = 22;
                 let menu_height = 9;
@@ -99,16 +78,14 @@ impl DrawingApp {
                 return Ok(());
         }
 
-        // ── Canvas resize click dismiss ─────────────────────
-        if self.show_canvas_resize
+                if self.show_canvas_resize
             && let MouseEventKind::Down(MouseButton::Left) = event.kind {
                 self.show_canvas_resize = false;
                 self.canvas_resize_buffer.clear();
                 return Ok(());
         }
 
-        // ── Colour picker popup click ────────────────────────
-        if self.show_color_picker {
+                if self.show_color_picker {
             if let MouseEventKind::Down(MouseButton::Left) = event.kind {
                 if self.color_picker_area.contains(position) {
                     let row = position.y.saturating_sub(self.color_picker_area.y + 1);
@@ -133,16 +110,12 @@ impl DrawingApp {
             return Ok(());
         }
 
-        // ── Text mode click ──────────────────────────────────
-        // When in text mode, clicking on the canvas sets the text
-        // cursor position and commits any pending text buffer.
-        if self.text_mode {
+                                if self.text_mode {
             let Some(local) = self.local_canvas_position(position) else {
                 return Ok(());
             };
             if let MouseEventKind::Down(MouseButton::Left) = event.kind {
-                // If there's existing text in the buffer, commit it first.
-                if !self.text_buffer.is_empty()
+                                if !self.text_buffer.is_empty()
                     && let Some(cpos) = self.text_cursor {
                         self.push_history();
                         let text = self.text_buffer.clone();
@@ -154,9 +127,7 @@ impl DrawingApp {
             return Ok(());
         }
 
-        // ── General canvas interactions ────────────────────────
-        // Everything below requires a valid canvas-local position.
-        let Some(local) = self.local_canvas_position(position) else {
+                        let Some(local) = self.local_canvas_position(position) else {
             return Ok(());
         };
 
@@ -176,8 +147,7 @@ impl DrawingApp {
                     self.last_localition = Some(local);
                 } else if let Some(kind) = self.shape_mode {
                     if let Some(anchor) = self.shape_anchor {
-                        // Second click: set up preview for Up handler.
-                        let end = if shift_held {
+                                                let end = if shift_held {
                             Self::constrain_square(anchor, local)
                         } else {
                             local
@@ -204,9 +174,7 @@ impl DrawingApp {
                             self.points.insert(p, color);
                         }
                         self.line_anchor = None;
-                        // Continuous line: line_anchor stays as None,
-                        // user can click again to draw next segment.
-                    }
+                                                                    }
                 } else if self.gradient_mode {
                     if self.gradient_anchor.is_none() {
                         self.gradient_anchor = Some(local);
@@ -240,8 +208,7 @@ impl DrawingApp {
                         self.selecting = true;
                     }
                 } else {
-                    // Default: freehand brush stroke.
-                    self.push_history();
+                                        self.push_history();
                     let color = self.draw_color();
                     self.stamp_brush((local.x, local.y), color);
                     self.place_symmetry((local.x, local.y), color);
@@ -254,8 +221,7 @@ impl DrawingApp {
                     self.push_history();
                     self.run_life_generation();
                 } else {
-                    // Show context menu at the mouse position.
-                    self.show_context_menu = true;
+                                        self.show_context_menu = true;
                     self.context_menu_idx = 0;
                     self.context_menu_pos = position;
                 }
@@ -295,8 +261,7 @@ impl DrawingApp {
                     };
                     self.shape_preview = Some((anchor, end, kind));
                 } else if self.spray_mode {
-                    // Spray can: stamp random points within brush radius using LCG.
-                    let radius = self.brush_size.saturating_sub(1) as i16;
+                                        let radius = self.brush_size.saturating_sub(1) as i16;
                     let cx = constrained.x as i16;
                     let cy = constrained.y as i16;
                     let mut seed = self.color_gen_seed;
@@ -318,10 +283,8 @@ impl DrawingApp {
                     }
                     self.color_gen_seed = seed;
                 } else if self.line_anchor.is_some() || self.gradient_mode {
-                    // No-op during drag for line/gradient.
-                } else if shift_held && self.last_localition.is_some() {
-                    // Shift-drag: constrained line drawing
-                    let start = self.last_localition.unwrap();
+                                    } else if shift_held && self.last_localition.is_some() {
+                                        let start = self.last_localition.unwrap();
                     let end = Self::constrain_angle(start, constrained);
                     self.draw_line_to(end);
                 } else {
@@ -380,9 +343,7 @@ impl DrawingApp {
         Ok(())
     }
 
-    /// Like draw_line but constrained to a single Bresenham segment
-    /// (no history push). Used for Shift-drag constrained line drawing.
-    fn draw_line_to(&mut self, end: Position) {
+            fn draw_line_to(&mut self, end: Position) {
         let color = self.draw_color();
         let Some(start) = self.last_localition else {
             self.stamp_brush((end.x, end.y), color);

@@ -1,15 +1,3 @@
-// ── ui/header.rs ─────────────────────────────────────────────────────
-// Three-line header: tab bar (row 0), info bar with tool/colour/brush
-// info (row 1), and a separator (row 2).
-//
-// Ratatui rendering pattern:
-//   We write directly to `frame.buffer_mut().cell_mut()` for the tab
-//   bar and separator (fine-grained control), and use a `Paragraph`
-//   widget for the info bar (higher-level, handles text layout).
-//
-//   Direct buffer access is faster for fixed-format rows but requires
-//   manual bounds checking. `Paragraph` is slower but handles line
-//   wrapping and clipping automatically.
 
 use ratatui::{
     Frame,
@@ -34,10 +22,7 @@ pub fn render_header(
     current_tab: usize,
     tab_name: &str,
 ) {
-    // ── Tab bar (row 0) ────────────────────────────────────
-    // Each tab gets a short label. The active tab shows its name;
-    // inactive tabs show their 1-based index number.
-    let tab_y = area.y;
+                let tab_y = area.y;
     let mut x = area.x;
     let end = area.x.saturating_add(area.width);
 
@@ -61,8 +46,7 @@ pub fn render_header(
         }
         x += display.len() as u16;
 
-        // Separator between tabs.
-        if ti < tab_count - 1 && x < end {
+                if ti < tab_count - 1 && x < end {
             if let Some(cell) = frame.buffer_mut().cell_mut(Position::new(x, tab_y)) {
                 cell.set_char('│').set_style(Style::default().fg(dim()));
             }
@@ -70,26 +54,22 @@ pub fn render_header(
         }
     }
 
-    // Fill remaining tab-row space with surface background.
-    while x < end {
+        while x < end {
         if let Some(cell) = frame.buffer_mut().cell_mut(Position::new(x, tab_y)) {
             cell.set_char(' ').set_style(Style::default().bg(surface()));
         }
         x += 1;
     }
 
-    // ── Info bar (row 1-2) ────────────────────────────────
-    let info_y = area.y + 1;
+        let info_y = area.y + 1;
 
-    // The title ("Opendraw") changes colour in text mode as a hint.
-    let title_style = if text_mode {
+        let title_style = if text_mode {
         Style::default().fg(Color::Green).bold()
     } else {
         Style::default().fg(text()).bold()
     };
 
-    // The mode tag appears on the right side of the info bar.
-    let mode_tag: String = if text_mode {
+        let mode_tag: String = if text_mode {
         " text() ".to_string()
     } else if !mode_str.is_empty() {
         format!(" {} ", mode_str)
@@ -105,8 +85,7 @@ pub fn render_header(
         Style::default()
     };
 
-    // Build the three columns: left (title), center (brush info), right (mode tag + shortcuts).
-    let left_spans = vec![
+        let left_spans = vec![
         Span::styled(" ◆ ", Style::default().fg(accent())),
         Span::styled("Opendraw", title_style),
         Span::styled("  ", Style::default()),
@@ -132,9 +111,7 @@ pub fn render_header(
         Span::styled("  ?", Style::default().fg(subtle())),
     ];
 
-    // Layout: left | padding | gap | center | gap | padding | right
-    // The gap is calculated so `center` is roughly centred.
-    let left: Line = left_spans.into();
+            let left: Line = left_spans.into();
     let center: Line = center_spans.into();
     let right: Line = right_spans.into();
     let left_w = left.width() as u16;
@@ -153,13 +130,10 @@ pub fn render_header(
     full_spans.push(Span::raw(" ".repeat(padding as usize)));
     full_spans.extend(right.spans);
 
-    // Render the info bar. The bg(surface()) style ensures stale cells
-    // from previous frames are cleared (no ghost characters).
-    let info_area = Rect::new(area.x, info_y, area.width, 1);
+            let info_area = Rect::new(area.x, info_y, area.width, 1);
     frame.render_widget(Paragraph::new(Line::from(full_spans)).style(Style::default().bg(surface())), info_area);
 
-    // Row 2: separator
-    let sep_y = area.y + 2;
+        let sep_y = area.y + 2;
     for sx in area.x..end {
         if let Some(cell) = frame.buffer_mut().cell_mut(Position::new(sx, sep_y)) {
             cell.set_char('─').set_style(Style::default().fg(dim()));

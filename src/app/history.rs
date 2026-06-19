@@ -1,21 +1,3 @@
-// ── app/history.rs ──────────────────────────────────────────────────
-// Undo/redo stack management, save/load from .txt files, and PNG export.
-//
-// Undo/redo works by storing full clones of the `points` BTreeMap. This is
-// simple and correct, but memory-hungry for large drawings.
-//
-// LIMITATION: text_entries are NOT tracked by undo/redo. Only the pixel
-// map (BTreeMap) is snapshotted. This means undoing a clear will restore
-// pixels but NOT text that was placed before the clear. A proper fix would
-// require storing a combined snapshot struct with both `points` and
-// `text_entries`.
-//
-// Save format:
-//   P <x> <y> <palette_index>    — one line per pixel
-//   T <x> <y> <text>             — one line per text entry
-//
-// Load reverses the process: "P" lines restore pixels via palette index,
-// "T" lines restore text entries.
 
 use std::{fs, io, path::Path};
 
@@ -24,27 +6,16 @@ use ratatui::style::Color;
 
 use crate::app::{draw::color_to_rgba, DrawingApp};
 
-// ── Session persistence now lives in `session.rs` ──────────────────
 
 impl DrawingApp {
-    // ── Undo / Redo ──────────────────────────────────────────────
-    // `history` stores previous `points` states. `redo_stack` stores
-    // states that were undone. Both are LIFO (Vec::push / Vec::pop).
-    //
-    // `push_history()` is called BEFORE any mutation. After pushing,
-    // the redo stack is cleared because a new branch has been created
-    // (any previous redos are no longer reachable).
-
-    /// Save the current `points` state to the undo stack.
-    pub(crate) fn push_history(&mut self) {
+                            
+        pub(crate) fn push_history(&mut self) {
         let pts = self.points.clone();
         self.history.push(pts);
         self.redo_stack.clear();
     }
 
-    /// Restore the most recent history entry. The current state is
-    /// pushed onto the redo stack so it can be recovered.
-    pub(crate) fn undo(&mut self) {
+            pub(crate) fn undo(&mut self) {
         if let Some(prev) = self.history.pop() {
             let replaced = std::mem::replace(&mut self.points, prev);
             self.redo_stack.push(replaced);
@@ -58,14 +29,8 @@ impl DrawingApp {
         }
     }
 
-    // ── Save / Load ──────────────────────────────────────────────
-
-    /// Serialise the canvas to a .txt file.
-    /// Format:
-    ///   "P x y palette_index" — palette colours (compact)
-    ///   "R x y r g b"        — arbitrary RGB colours (exact)
-    ///   "T x y text"         — text entries
-    pub fn save_to(&self, path: &Path) -> io::Result<()> {
+    
+                        pub fn save_to(&self, path: &Path) -> io::Result<()> {
         let mut out = String::new();
         for (&(x, y), &color) in &self.points {
             if let Some(idx) = self.palette.colors.iter().position(|(c, _)| *c == color) {
@@ -80,13 +45,7 @@ impl DrawingApp {
         fs::write(path, out)
     }
 
-    /// Deserialise a .txt or image file (.jpg, .png, etc.).
-    /// For .txt files, parses "P x y idx" lines.
-    /// For image files, loads, resizes to fit canvas, and quantizes to
-    /// the 14-colour palette using LAB perceptual matching.
-    /// After loading an image, `canvas_width` / `canvas_height` are set
-    /// to the image dimensions so the virtual canvas matches the image.
-    pub fn load_from(&mut self, path: &Path) -> io::Result<()> {
+                            pub fn load_from(&mut self, path: &Path) -> io::Result<()> {
         if !path.exists() {
             return Ok(());
         }
@@ -102,25 +61,17 @@ impl DrawingApp {
             let img = image::open(path).map_err(io::Error::other)?;
             let (w, h) = (img.width(), img.height());
 
-            // ── Sizing ────────────────────────────────────────────
-            // Fit the image within the available canvas area while
-            // maintaining aspect ratio. Landscape images fill the
-            // width; portrait images fill the height. This ensures
-            // wide images span the full canvas and tall images aren't
-            // cut off at the bottom.
-            let (tw, th) = crossterm::terminal::size()
+                                                                                    let (tw, th) = crossterm::terminal::size()
                 .unwrap_or((187, 46));
             let max_canvas_w = (tw as u32).saturating_sub(2).max(8);
             let max_canvas_h = (th as u32).saturating_sub(7).max(4);
 
             let (nw, nh) = if w >= h {
-                // Landscape: fill width, cap height to visible area
-                let nw = max_canvas_w;
+                                let nw = max_canvas_w;
                 let nh = (nw as f64 * h as f64 / w as f64).round().max(1.0) as u32;
                 (nw, nh.min(max_canvas_h))
             } else {
-                // Portrait: fill height, cap width to visible area
-                let nh = max_canvas_h;
+                                let nh = max_canvas_h;
                 let nw = (nh as f64 * w as f64 / h as f64).round().max(1.0) as u32;
                 (nw.min(max_canvas_w), nh)
             };
@@ -132,11 +83,7 @@ impl DrawingApp {
             self.points.clear();
             self.text_entries.clear();
 
-            // ── Centring ──────────────────────────────────────────
-            // Compute (off_x, off_y) so the image is centred within
-            // the current virtual canvas. If no canvas size is set
-            // (0,0), centre within the terminal body area.
-            let (cw, ch) = if self.canvas_width > 0 {
+                                                            let (cw, ch) = if self.canvas_width > 0 {
                 (self.canvas_width as u32, self.canvas_height.max(1) as u32)
             } else {
                 (max_canvas_w, max_canvas_h)
@@ -192,15 +139,8 @@ impl DrawingApp {
 
 
 
-    // ── PNG Export ────────────────────────────────────────────────
-    // Uses the `image` crate to write an RGBA PNG. Palette colours are
-    // mapped to approximate RGB via a match. The image is cropped to the
-    // bounding box of all pixels, with a 1-pixel transparent border.
-
-    /// Build an RgbaImage from the current canvas pixels.
-    /// Uses canvas_width/canvas_height if set, otherwise crops to bounding box.
-    /// Returns (image, width, height) or None if the canvas is empty.
-    fn build_png_image(&self) -> Option<(image::RgbaImage, u32, u32)> {
+                
+                fn build_png_image(&self) -> Option<(image::RgbaImage, u32, u32)> {
         if self.points.is_empty() {
             return None;
         }
@@ -230,8 +170,7 @@ impl DrawingApp {
         Some((img, out_w, out_h))
     }
 
-    /// Export the canvas to a PNG file at the given path.
-    pub fn export_png_to(&self, path: &std::path::Path) -> io::Result<()> {
+        pub fn export_png_to(&self, path: &std::path::Path) -> io::Result<()> {
         let Some((img, _w, _h)) = self.build_png_image() else {
             return Ok(());
         };
@@ -239,8 +178,5 @@ impl DrawingApp {
         Ok(())
     }
 
-    // ── Quick export ──────────────────────────────────────────────
-    // Saves the canvas to pixdraw_export.png so the user can open
-    // it in an image viewer. Simpler than Ctrl+E (no file browser).
-
+            
 }

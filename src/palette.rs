@@ -1,18 +1,6 @@
-// ── palette.rs ──────────────────────────────────────────────────────
-// The colour palette: a static list of 14 named colours with a
-// current-selection index. Used to pick drawing colours.
-//
-// Why a static const array?
-//   The palette never changes at runtime (no user-defined palette slots).
-//   A static slice is the simplest possible data structure — no heap
-//   allocation, no mutation of the colour list itself.
-//
-// Each entry is (ratatui::Color, &str) — the colour value and its
-// human-readable name. The name is used in the UI header and popups.
 
 use ratatui::style::Color;
 
-/// Default 14-colour palette (Tokyo Night inspired).
 pub const PALETTE: &[(Color, &str)] = &[
     (Color::Rgb(0xFF, 0xFF, 0xFF), "White"),
     (Color::Rgb(0xC2, 0xC3, 0xC7), "Light Gray"),

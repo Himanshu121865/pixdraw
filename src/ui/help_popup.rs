@@ -1,6 +1,3 @@
-// ── ui/help_popup.rs ─────────────────────────────────────────────────
-// Full keybinding reference help overlay with search functionality.
-// Search is activated by default, Esc cycles search→browse→close.
 
 use ratatui::{
     Frame,
@@ -12,9 +9,6 @@ use ratatui::{
 
 use super::col::*;
 
-// ── Help data ────────────────────────────────────────────────────────
-// Static list of all keyboard shortcuts, organised by category.
-// Single source of truth for help text and keybinding documentation.
 
 struct HelpCat(&'static str, &'static [&'static str]);
 
@@ -94,10 +88,6 @@ const HELP_DATA: &[HelpCat] = &[
     ]),
 ];
 
-/// Render the full keybindings help overlay with search.
-/// Search is activated by default when opening help.
-/// Esc exits search → browse mode, another Esc closes help.
-/// In browse mode, typing any character reactivates search.
 pub fn render_help_popup(
     frame: &mut Frame<'_>,
     screen: Rect,
@@ -109,8 +99,7 @@ pub fn render_help_popup(
 ) {
     let search_bar = format!(" {} Search: {}", if search_active { "▶" } else { " " }, search_buffer);
 
-    // ── Build lines with search filtering ────────────────────────
-    let mut lines = Vec::new();
+        let mut lines = Vec::new();
     if search_buffer.is_empty() {
         for (i, cat) in HELP_DATA.iter().enumerate() {
             let is_selected = i == selected;
@@ -167,8 +156,7 @@ pub fn render_help_popup(
     frame.render_widget(Clear, area);
     block.render(area, frame.buffer_mut());
 
-    // ── Search bar (always visible, first row inside border) ─────
-    let search_style = if search_active {
+        let search_style = if search_active {
         Style::default().fg(Color::Green)
     } else {
         Style::default().fg(subtle())

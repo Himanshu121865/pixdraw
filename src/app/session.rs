@@ -1,12 +1,4 @@
-// ── app/session.rs ──────────────────────────────────────────────────
-// Automatic session persistence. Saves the full app state (all tabs,
-// canvas data, palette index, brush size, colour overrides, etc.) to
-// a custom-format DAT file in `~/.local/share/pixdraw/session.dat`.
 
-// Why ~/.local/share/pixdraw/ instead of the working directory?
-//   The session should survive terminal closes, working directory
-//   changes, and system restarts. XDG data directories are the
-//   standard cross-platform convention for this.
 
 use std::{fs, io};
 
@@ -16,7 +8,6 @@ use ratatui::style::Color;
 use crate::app::draw::color_to_rgb;
 use crate::app::DrawingApp;
 
-/// Return the path to the session file in the user's data directory.
 fn session_path() -> std::path::PathBuf {
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
     let dir = std::path::PathBuf::from(&home).join(".local/share/pixdraw");
@@ -24,9 +15,7 @@ fn session_path() -> std::path::PathBuf {
     dir.join("session.dat")
 }
 
-// ── Colour helpers (free functions) ─────────────────────────────
 
-/// Serialise a Color as comma-separated "R,G,B".
 fn color_to_rgb_str(c: &Color) -> String {
     match c {
         Color::Rgb(r, g, b) => format!("{r},{g},{b}"),
@@ -37,9 +26,6 @@ fn color_to_rgb_str(c: &Color) -> String {
     }
 }
 
-/// Parse a `count|R,G,B|R,G,B|...` string into a Vec<Color>.
-/// The count prefix is validated but the actual parsing uses the
-/// split content (so a wrong count doesn't cause data loss).
 fn parse_color_list(s: &str) -> Vec<Color> {
     let parts: Vec<&str> = s.splitn(2, '|').collect::<Vec<_>>();
     if parts.len() < 2 { return Vec::new(); }
@@ -47,7 +33,6 @@ fn parse_color_list(s: &str) -> Vec<Color> {
     parts[1].split('|').filter_map(parse_single_color).collect()
 }
 
-/// Parse a single "R,G,B" string into a Color.
 fn parse_single_color(s: &str) -> Option<Color> {
     let parts: Vec<&str> = s.split(',').collect();
     if parts.len() == 3
@@ -59,30 +44,22 @@ fn parse_single_color(s: &str) -> Option<Color> {
     }
 }
 
-// ── Static helpers on DrawingApp ─────────────────────────────────
 
 impl DrawingApp {
-    /// Remove the session file (used after "Discard & New").
-    pub fn delete_session() {
+        pub fn delete_session() {
         let _ = fs::remove_file(session_path());
     }
 
-    /// Check whether a session file exists.
-    pub fn session_exists() -> bool {
+        pub fn session_exists() -> bool {
         session_path().exists()
     }
 }
 
-// ── Instance methods on DrawingApp ───────────────────────────────
 
 impl DrawingApp {
-    /// Save the current state to the session file (all tabs).
-    /// Serialises shared metadata first, then each tab's data.
-    /// Tab boundaries are marked by `tab_name:` lines.
-    pub fn save_session(&self) -> io::Result<()> {
+                pub fn save_session(&self) -> io::Result<()> {
         let mut out = String::new();
-        // Shared metadata (one line per field, `key:value` format).
-        out.push_str(&format!("brush_size:{}\n", self.brush_size));
+                out.push_str(&format!("brush_size:{}\n", self.brush_size));
         out.push_str(&format!("symmetry:{}\n", self.symmetry_mode as u8));
         out.push_str(&format!("grid:{}\n", self.show_grid as u8));
         out.push_str(&format!("palette_idx:{}\n", self.palette.index));
@@ -101,8 +78,7 @@ impl DrawingApp {
             out.push_str(&format!("color_override:{}\n", color_to_rgb_str(c)));
         }
         out.push_str(&format!("color_gen_seed:{}\n", self.color_gen_seed));
-        // Per-tab data.
-        for tab in &self.tabs {
+                for tab in &self.tabs {
             out.push_str(&format!("tab_name:{}\n", tab.name));
             for (pos, text) in &tab.text_entries {
                 out.push_str(&format!("text:{}|{}|{}\n", pos.x, pos.y, text));
@@ -119,9 +95,7 @@ impl DrawingApp {
         fs::write(session_path(), out)
     }
 
-    /// Restore state from the session file (all tabs).
-    /// Returns true if a session was restored, false if no file existed.
-    pub fn restore_session(&mut self) -> io::Result<bool> {
+            pub fn restore_session(&mut self) -> io::Result<bool> {
         let path = session_path();
         if !path.exists() {
             return Ok(false);
@@ -129,11 +103,9 @@ impl DrawingApp {
         let data = fs::read_to_string(&path)?;
         let mut lines_iter = data.lines().peekable();
 
-        // Read saved current_tab index; apply AFTER rebuilding tabs below.
-        let mut saved_tab: Option<usize> = None;
+                let mut saved_tab: Option<usize> = None;
 
-        // Shared fields before the first tab_name.
-        while let Some(line) = lines_iter.peek() {
+                while let Some(line) = lines_iter.peek() {
             if line.starts_with("tab_name:") {
                 break;
             }
@@ -147,8 +119,7 @@ impl DrawingApp {
             } else if let Some(rest) = line.strip_prefix("palette_idx:") {
                 if let Ok(n) = rest.parse::<usize>() { self.palette.select(n); }
             } else if let Some(rest) = line.strip_prefix("current_tab:") {
-                // Save the index but don't apply yet — tabs haven't been rebuilt.
-                if let Ok(n) = rest.parse::<usize>() { saved_tab = Some(n); }
+                                if let Ok(n) = rest.parse::<usize>() { saved_tab = Some(n); }
             } else if let Some(rest) = line.strip_prefix("canvas_width:") {
                 if let Ok(n) = rest.parse::<u16>() { self.canvas_width = n; }
             } else if let Some(rest) = line.strip_prefix("canvas_height:") {
@@ -166,8 +137,7 @@ impl DrawingApp {
                 && let Ok(n) = rest.parse::<u64>() { self.color_gen_seed = n; }
         }
 
-        // Tab blocks — rebuild from session data, then apply saved_tab.
-        self.tabs.clear();
+                self.tabs.clear();
         self.tabs.push(crate::app::TabData::new("Untitled".to_string()));
         self.current_tab = 0;
 
@@ -201,8 +171,7 @@ impl DrawingApp {
             }
         }
 
-        // Now apply the saved tab index (tabs are fully rebuilt).
-        if let Some(n) = saved_tab {
+                if let Some(n) = saved_tab {
             self.current_tab = n.min(self.tabs.len().saturating_sub(1));
         }
 

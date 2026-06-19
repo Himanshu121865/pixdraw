@@ -1,13 +1,3 @@
-// ── app/handlers.rs ──────────────────────────────────────────────────
-// Popup/modal keyboard handlers, file-browser event processing, and
-// palette-bar click handling.
-//
-// These were extracted from `event.rs` to keep the main dispatch short.
-// Each handler is an `impl DrawingApp` method just like the dispatch code
-// in event.rs — Rust allows impl blocks to be spread across files.
-//
-// All handlers take `&mut self` so they can mutate application state.
-// They return `io::Result<()>` to allow ? propagation of IO errors.
 
 use std::io;
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
@@ -18,12 +8,7 @@ use crate::app::DrawingApp;
 use crate::file_browser::FileBrowserMode;
 
 impl DrawingApp {
-    // ── File browser sub-dialog ────────────────────────────────
-    // The file browser is special: it has its OWN nested event loop
-    // inside `handle_file_browser_event`. It blocks on event::read()
-    // directly rather than going through the main handle_event → on_key
-    // path. This keeps the file browser logic self-contained.
-
+                    
     pub(crate) fn handle_file_browser_event(&mut self) -> io::Result<()> {
         use crossterm::event;
         match event::read()? {
@@ -34,8 +19,7 @@ impl DrawingApp {
                 let is_save_like = self.file_browser.mode == FileBrowserMode::Save
                     || self.file_browser.mode == FileBrowserMode::ExportPng;
                 if is_save_like && self.file_browser.filename_input_active {
-                    // Typing mode: all chars go to filename input.
-                    match key.code {
+                                        match key.code {
                         KeyCode::Esc => self.file_browser.filename_input_active = false,
                         KeyCode::Enter => {
                             let name = self.file_browser.filename_input.trim().to_string();
@@ -194,11 +178,7 @@ impl DrawingApp {
         }
     }
 
-    // ── Colour picker ───────────────────────────────────────────
-    // The colour picker (^Tab) renders a vertical list of all palette
-    // colours plus custom colours. Keys 1-9 select a palette colour,
-    // 0 selects the most recent custom colour, Esc dismisses.
-
+                
     pub(crate) fn on_key_color_picker(&mut self, key: KeyEvent) -> io::Result<()> {
         match key.code {
             KeyCode::Esc => self.show_color_picker = false,
@@ -223,11 +203,7 @@ impl DrawingApp {
         Ok(())
     }
 
-    // ── Colour selector ─────────────────────────────────────────
-    // The colour selector popup (shown after pressing `u` to generate
-    // custom colours) lets the user pick one of the 3 generated colours
-    // or enter a custom RGB value.
-
+                
     pub(crate) fn on_key_color_selector(&mut self, key: KeyEvent) -> io::Result<()> {
         match key.code {
             KeyCode::Esc => {
@@ -256,8 +232,7 @@ impl DrawingApp {
                     }
                     self.show_color_selector = false;
                 } else {
-                    // "Custom RGB..." option — open the input dialog.
-                    self.show_color_selector = false;
+                                        self.show_color_selector = false;
                     self.show_color_input = true;
                     self.color_input_buffer.clear();
                 }
@@ -267,17 +242,11 @@ impl DrawingApp {
         Ok(())
     }
 
-    // ── Inline text mode ────────────────────────────────────────
-    // When `text_mode` is true, ALL key presses go here (via the
-    // early return in `on_key`). Characters are pushed into the text
-    // buffer and shown as a preview on the canvas. Enter commits the
-    // text and exits to brush mode. Esc cancels.
-
+                    
     pub(crate) fn on_key_text_mode(&mut self, key: KeyEvent) -> io::Result<()> {
         match key.code {
             KeyCode::Esc => {
-                // Reset everything to brush mode — discard any pending text.
-                self.text_mode = false;
+                                self.text_mode = false;
                 self.line_mode = false;
                 self.spray_mode = false;
                 self.shape_mode = None;
@@ -285,8 +254,7 @@ impl DrawingApp {
                 self.text_cursor = None;
             }
             KeyCode::Enter => {
-                // Commit the text at the cursor position.
-                if let Some(pos) = self.text_cursor
+                                if let Some(pos) = self.text_cursor
                     && !self.text_buffer.is_empty() {
                         self.push_history();
                         let text = self.text_buffer.clone();
@@ -305,10 +273,7 @@ impl DrawingApp {
         Ok(())
     }
 
-    // ── Colour input ────────────────────────────────────────────
-    // Dialog for typing RGB values manually (e.g. "255 128 0").
-    // Accepts digits, spaces, commas, and tabs as separators.
-
+            
     pub(crate) fn on_key_color_input(&mut self, key: KeyEvent) -> io::Result<()> {
         match key.code {
             KeyCode::Esc => {
@@ -328,8 +293,7 @@ impl DrawingApp {
             }
             KeyCode::Char(c) if c.is_ascii_digit() || c == ' ' || c == ',' || c == '\t' => {
                 self.color_input_buffer.push(c);
-                // Live-update the override on every number, filling 0 for missing components.
-                let parts: Vec<&str> = self.color_input_buffer
+                                let parts: Vec<&str> = self.color_input_buffer
                     .split(&[',', ' ', '\t'][..])
                     .filter(|s| !s.is_empty())
                     .collect();
@@ -346,10 +310,7 @@ impl DrawingApp {
         Ok(())
     }
 
-    // ── Startup dialog ──────────────────────────────────────────
-    // When a prior session is found, this dialog offers three choices:
-    // Restore, Save & New, or Discard & New.
-
+            
     pub(crate) fn on_key_startup(&mut self, key: KeyEvent) -> io::Result<()> {
         match key.code {
             KeyCode::Char('j') | KeyCode::Down => {
@@ -377,10 +338,7 @@ impl DrawingApp {
         Ok(())
     }
 
-    // ── Context menu ────────────────────────────────────────────
-    // The right-click context menu supports: erase point, clear canvas,
-    // copy, paste, and select all.
-
+            
     pub(crate) fn on_key_context_menu(&mut self, key: KeyEvent) -> io::Result<()> {
         match key.code {
             KeyCode::Esc => {
@@ -399,32 +357,27 @@ impl DrawingApp {
                 self.show_context_menu = false;
                 match self.context_menu_idx {
                     0 => {
-                        // Erase at point
-                        if let Some(local) = self.local_canvas_position(pos) {
+                                                if let Some(local) = self.local_canvas_position(pos) {
                             self.push_history();
                             self.stamp_erase((local.x, local.y));
                         }
                     }
                     1 => {
-                        // Clear canvas
-                        self.push_history();
+                                                self.push_history();
                         self.points.clear();
                         self.last_localition = None;
                     }
                     2 => {
-                        // Copy
-                        self.copy_selection();
+                                                self.copy_selection();
                     }
                     3 => {
-                        // Paste at cursor
-                        if let Some(mpos) = self.mouse_position
+                                                if let Some(mpos) = self.mouse_position
                             && let Some(local) = self.local_canvas_position(mpos) {
                                 self.paste_selection(local);
                             }
                     }
                     _ => {
-                        // Select All — select entire canvas
-                        let w = self.canvas_area.width.saturating_sub(1);
+                                                let w = self.canvas_area.width.saturating_sub(1);
                         let h = self.canvas_area.height.saturating_sub(1);
                         self.select_mode = true;
                         self.selection_start = Some(Position::new(0, 0));
@@ -438,9 +391,7 @@ impl DrawingApp {
         Ok(())
     }
 
-    // ── Canvas resize ───────────────────────────────────────────
-    // Dialog for entering new canvas dimensions (width height).
-
+        
     pub(crate) fn on_key_canvas_resize(&mut self, key: KeyEvent) -> io::Result<()> {
         match key.code {
             KeyCode::Esc => {
@@ -472,9 +423,7 @@ impl DrawingApp {
         Ok(())
     }
 
-    // ── Tab rename ──────────────────────────────────────────────
-    // Dialog for renaming the current tab.
-
+        
     pub(crate) fn on_key_tab_rename(&mut self, key: KeyEvent) -> io::Result<()> {
         match key.code {
             KeyCode::Esc => {
@@ -501,43 +450,33 @@ impl DrawingApp {
         Ok(())
     }
 
-    // ── Palette bar click ───────────────────────────────────────
-    // The palette bar at the bottom shows palette colour swatches (○/●)
-    // and custom colour slots (C1◆, C2◆, etc.). This handler figures out
-    // which swatch was clicked based on the X offset.
-
+                
     pub(crate) fn handle_palette_bar_click(&mut self, pos: Position) {
         let bar_x = self.palette_bar_area.x.saturating_add(1);
         let col = pos.x;
         if col < bar_x {
             return;
         }
-        let label_len: u16 = "Palette:".len() as u16 + 1; // label + trailing space
-        let click_pos = col.saturating_sub(bar_x + label_len);
+        let label_len: u16 = "Palette:".len() as u16 + 1;         let click_pos = col.saturating_sub(bar_x + label_len);
         let pal_count = self.palette.colors.len() as u16;
 
-        // Click on the label — ignore.
-        if click_pos == 0 && col < bar_x + label_len {
+                if click_pos == 0 && col < bar_x + label_len {
             return;
         }
         let offset = click_pos as usize;
 
-        // Click on a palette colour swatch.
-        if offset < pal_count as usize {
+                if offset < pal_count as usize {
             self.palette.select(offset);
             self.custom_color_override = None;
             self.push_color_history(self.palette.current());
             return;
         }
 
-        // Skip the separator `┆` at offset == pal_count
-        if offset == pal_count as usize {
+                if offset == pal_count as usize {
             return;
         }
 
-        // Custom colours: each slot takes 3 chars (e.g. "C1◆")
-        let custom_offset = offset - pal_count as usize - 1;  // -1 for the separator
-        let cust_idx = custom_offset / 3;
+                let custom_offset = offset - pal_count as usize - 1;          let cust_idx = custom_offset / 3;
         if cust_idx < self.custom_colors.len() {
             let c = self.custom_colors[cust_idx];
             self.custom_color_override = Some(c);
